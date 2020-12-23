@@ -1,12 +1,17 @@
 import handler.MyWebSocketHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.converter.StringMessageConverter;
+import org.springframework.messaging.simp.stomp.StompFrameHandler;
+import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandler;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
+
+import java.lang.reflect.Type;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class test {
@@ -18,12 +23,26 @@ public class test {
 
         String url = "ws://127.0.0.1:8081/chen";
         StompSessionHandler sessionHandler = new MyWebSocketHandler();
-        ListenableFuture<StompSession> session = stompClient.connect(url, sessionHandler);
+        ListenableFuture<StompSession> future = stompClient.connect(url, sessionHandler);
 
-        StompSession.Receiptable re = session.get().send("/app/greeting", "abcde");
-        log.info("{}", re.getReceiptId());
+        StompSession session = future.get();
+        session.subscribe("/sub", new StompFrameHandler() {
+            @Override
+            public Type getPayloadType(StompHeaders headers) {
+                return String.class;
+            }
+
+            @Override
+            public void handleFrame(StompHeaders headers, Object payload) {
+                log.info("客户端接收到消息 = {}", payload);
+            }
+        });
         while (true) {
-
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 }
